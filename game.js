@@ -67,7 +67,7 @@ class Level {
             this._map[y] = Array(this.width);
         }
 
-        this._entities = []
+        this._entities = [];
 
         this.generate();
     }
@@ -89,13 +89,13 @@ class Level {
     }
 
     generate() {
-        let wallFrequency = 0.225;
+        let wallFrequency = 0.4;
 
         for (var y = 0; y < this.height; y++) {
             for (var x = 0; x < this.width; x++) {
                 if (x == 0 || y == 0
                     || x == this.width - 1 || y == this.height - 1
-                    || Math.random() < wallFrequency) {
+                    || Math.random() <= wallFrequency) {
                     this.insert(new Wall(), x, y);
                 } else {
                     this.insert(new Floor(), x, y);
@@ -107,9 +107,63 @@ class Level {
     insert(tile, x, y) {
         this.map[y][x] = tile;
     }
+
+    get(x, y) {
+        return this.map[y][x];
+    }
 }
 
-let level = new Level(50, 50)
+class CaveLevel extends Level {
+    constructor(width, height) {
+        super(width, height);
+    }
+
+    isWall(x, y) {
+        return this.get(x, y) instanceof Wall;
+    }
+
+    countWalls(x, y) {
+        let candidates = [this.get(x - 1, y + 1),
+                          this.get(x + 0, y + 1),
+                          this.get(x + 1, y + 1),
+                          this.get(x - 1, y + 0),
+                          this.get(x + 0, y + 0),
+                          this.get(x + 1, y + 0),
+                          this.get(x - 1, y - 1),
+                          this.get(x + 0, y - 1),
+                          this.get(x + 1, y - 1)];
+
+        var walls = 0;
+
+        for (var candidate of candidates) {
+            walls += candidate instanceof Wall;
+        }
+
+        return walls;
+    }
+
+    runCellularAutomation() {
+        for (var y = 1; y < this.height - 1; y++) {
+            for (var x = 0; x < this.width - 1; x++) {
+                if (this.countWalls(x, y) >= 5 && !this.isWall(x, y)) {
+                    this.insert(new Wall(), x, y);
+                }
+            }
+        }
+    }
+
+    generate() {
+        super.generate();
+
+        let iterations = 5;
+
+        for (var i = 0; i < iterations; i++) {
+            this.runCellularAutomation();
+        }
+    }
+}
+
+let level = new CaveLevel(50, 50);
 
 function tick() {
     var table = "";
