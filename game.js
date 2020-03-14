@@ -1,20 +1,12 @@
 let mapElement = document.getElementById("game");
 
-let mapWidth = 35;
-let mapHeight = 20;
-
-let map = Array(mapHeight);
-
-for (y = 0; y < mapHeight; y++) {
-    map[y] = Array(mapWidth);
-}
-
-let defaultFg = "white"
-let defaultBg = "black"
+let defaultFg = "white";
+let defaultBg = "black";
 
 class Tile {
-    constructor(character, fg=defaultFg, bg=defaultBg) {
+    constructor(character, impassable=false, fg=defaultFg, bg=defaultBg) {
         this._character = character;
+        this._impassable = impassable;
         this._fg = fg;
         this._bg = bg;
     }
@@ -25,6 +17,14 @@ class Tile {
 
     set character(character) {
         this._character = character;
+    }
+
+    get impassable() {
+        return this._impassable;
+    }
+
+    set impassable(impassable) {
+        this._impassable = impassable;
     }
 
     get fg() {
@@ -44,26 +44,77 @@ class Tile {
     }
 }
 
-function insertTileAt(tile, x, y) {
-    if (tile instanceof Tile) {
-        map[Math.floor(y)][Math.floor(x)] = tile;
-    } else {
-        console.log("Not a tile");
+class Floor extends Tile {
+    constructor(color=defaultFg) {
+        super(".", false, color);
     }
 }
 
-function fillMap(tile) {
-    for (y = 0; y < mapHeight; y++) {
-        for (x = 0; x < mapWidth; x++) {
-            insertTileAt(tile, x, y);
-        }
+class Wall extends Tile {
+    constructor(color=defaultFg) {
+        super("#", true, color);
     }
 }
+
+class Level {
+    constructor(width, height) {
+        this._width = width;
+        this._height = height;
+
+        this._map = Array(this.height);
+
+        for (var y = 0; y < this.height; y++) {
+            this._map[y] = Array(this.width);
+        }
+
+        this._entities = []
+
+        this.generate();
+    }
+
+    get width() {
+        return this._width;
+    }
+
+    get height() {
+        return this._height;
+    }
+
+    get map() {
+        return this._map;
+    }
+
+    get entities() {
+        return this._entities;
+    }
+
+    generate() {
+        let wallFrequency = 0.225;
+
+        for (var y = 0; y < this.height; y++) {
+            for (var x = 0; x < this.width; x++) {
+                if (x == 0 || y == 0
+                    || x == this.width - 1 || y == this.height - 1
+                    || Math.random() < wallFrequency) {
+                    this.insert(new Wall(), x, y);
+                } else {
+                    this.insert(new Floor(), x, y);
+                }
+            }
+        }
+    }
+
+    insert(tile, x, y) {
+        this.map[y][x] = tile;
+    }
+}
+
+let level = new Level(50, 50)
 
 function tick() {
     var table = "";
 
-    for (row of map) {
+    for (row of level.map) {
         table += "<tr>";
 
         for (tile of row) {
@@ -77,9 +128,6 @@ function tick() {
 
     mapElement.innerHTML = table;
 }
-
-fillMap(new Tile("."));
-insertTileAt(new Tile("@"), mapWidth / 2, mapHeight / 2);
 
 tick();
 setInterval(tick, 500);
