@@ -3,6 +3,17 @@ let mapElement = document.getElementById("game");
 let defaultFg = "white";
 let defaultBg = "black";
 
+function rand(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randExclusive(min, max) {
+    return rand(min, max - 1);
+}
+
 class Tile {
     constructor(character, impassable=false, fg=defaultFg, bg=defaultBg) {
         this._character = character;
@@ -56,20 +67,79 @@ class Wall extends Tile {
     }
 }
 
+class Entity extends Tile {
+    constructor(level, x, y, character, color) {
+        super(character, true, color);
+
+        this._level = level;
+        this._x = x;
+        this._y = y;
+
+        level.add(this)
+    }
+
+    get level() {
+        return this._level;
+    }
+
+    set level(level) {
+        this._level = level;
+    }
+
+    get x() {
+        return this._x;
+    }
+
+    set x(x) {
+        this._x = x;
+    }
+
+    get y() {
+        return this._y;
+    }
+
+    set y(y) {
+        this._y = y;
+    }
+
+    collide(x=this.x, y=this.y) {
+        return this.level.get(x, y).impassable;
+    }
+}
+
+class Player extends Entity {
+    constructor(level, color) {
+        super(level, 0, 0, "@", color);
+
+        var x = 0;
+        var y = 0;
+
+        while (this.collide(x, y)) {
+            x = randExclusive(0, level.width);
+            y = randExclusive(0, level.height);
+        }
+
+        this.x = x;
+        this.y = y;
+    }
+}
+
 class Level {
     constructor(width, height) {
         this._width = width;
         this._height = height;
 
-        this._map = Array(this.height);
+        this._map = [];
 
         for (var y = 0; y < this.height; y++) {
-            this._map[y] = Array(this.width);
+            this._map[y] = [];
         }
 
         this._entities = [];
 
         this.generate();
+
+        this._player = new Player(this, "green");
     }
 
     get width() {
@@ -102,6 +172,10 @@ class Level {
                 }
             }
         }
+    }
+
+    add(entity) {
+        this.entities.push(entity);
     }
 
     insert(tile, x, y) {
@@ -168,7 +242,17 @@ let level = new CaveLevel(50, 50);
 function tick() {
     var table = "";
 
+    let display = [];
+
     for (row of level.map) {
+        display.push(row);
+    }
+
+    for (entity of level.entities) {
+        display[entity.y][entity.x] = entity;
+    }
+
+    for (row of display) {
         table += "<tr>";
 
         for (tile of row) {
