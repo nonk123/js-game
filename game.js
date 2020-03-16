@@ -1,7 +1,7 @@
-let mapElement = document.getElementById("game");
+const mapElement = document.getElementById("game");
 
-let defaultFg = "white";
-let defaultBg = "black";
+const defaultFg = "white";
+const defaultBg = "black";
 
 function rand(min, max) {
     min = Math.ceil(min);
@@ -14,10 +14,11 @@ function randExclusive(min, max) {
     return rand(min, max - 1);
 }
 
+let level;
+
 class Tile {
-    constructor(character, impassable=false, fg=defaultFg, bg=defaultBg) {
+    constructor(character, fg=defaultFg, bg=defaultBg) {
         this._character = character;
-        this._impassable = impassable;
         this._fg = fg;
         this._bg = bg;
     }
@@ -28,14 +29,6 @@ class Tile {
 
     set character(character) {
         this._character = character;
-    }
-
-    get impassable() {
-        return this._impassable;
-    }
-
-    set impassable(impassable) {
-        this._impassable = impassable;
     }
 
     get fg() {
@@ -53,37 +46,57 @@ class Tile {
     set bg(bg) {
         this._bg = bg;
     }
+
+    get impassable() {
+        return false;
+    }
+
+    onStep(entity) {
+        // Override this.
+    }
 }
 
 class Floor extends Tile {
     constructor(color=defaultFg) {
-        super(".", false, color);
+        super(".", color);
     }
 }
 
 class Wall extends Tile {
     constructor(color=defaultFg) {
-        super("#", true, color);
+        super("#", color);
+    }
+
+    get impassable() {
+        return true;
     }
 }
 
-class Entity extends Tile {
-    constructor(level, x, y, character, color) {
-        super(character, true, color);
+directions = {
+    "w":  [-1,  0],
+    "e":  [ 1,  0],
+    "n":  [ 0, -1],
+    "s":  [ 0,  1],
+    "nw": [-1, -1],
+    "ne": [ 1, -1],
+    "sw": [-1,  1],
+    "se": [ 1,  1]
+};
 
-        this._level = level;
+class Entity extends Tile {
+    constructor(x, y, character, color) {
+        super(character, color);
+
         this._x = x;
         this._y = y;
-
-        level.add(this)
     }
 
     get level() {
-        return this._level;
+        return level;
     }
 
-    set level(level) {
-        this._level = level;
+    set level(_level) {
+        // Unused.
     }
 
     get x() {
@@ -91,7 +104,9 @@ class Entity extends Tile {
     }
 
     set x(x) {
-        this._x = x;
+        if (x >= 0 && x < this.level.width) {
+            this._x = x;
+        }
     }
 
     get y() {
@@ -99,20 +114,53 @@ class Entity extends Tile {
     }
 
     set y(y) {
-        this._y = y;
+        if (y >= 0 && y < this.level.height) {
+            this._y = y;
+        }
+    }
+
+    onAdd() {
+        // Override this.
     }
 
     collide(x=this.x, y=this.y) {
-        return this.level.get(x, y).impassable;
+        if (x >= 0 && x < this.level.width
+            && y >= 0 && y < this.level.height) {
+            return this.level.get(x, y).impassable;
+        } else {
+            return true;
+        }
+    }
+
+    move(direction) {
+        if (typeof direction == "string") {
+            direction = directions[direction];
+        }
+
+        const dx = direction[0];
+        const dy = direction[1];
+
+        if (!this.collide(this.x + dx, this.y + dy)
+            && (!this.collide(this.x + dx, this.y)
+                || !this.collide(this.x, this.y + dy))) {
+            this.x += dx;
+            this.y += dy;
+            this.level.get(this.x + dx, this.y + dy).onStep(this);
+            return true;
+        }
+
+        return false;
     }
 }
 
 class Player extends Entity {
-    constructor(level, color) {
-        super(level, 0, 0, "@", color);
+    constructor(color) {
+        super(0, 0, "@", color);
+    }
 
-        var x = 0;
-        var y = 0;
+    onAdd() {
+        let x = -1;
+        let y = -1;
 
         while (this.collide(x, y)) {
             x = randExclusive(0, level.width);
@@ -131,15 +179,13 @@ class Level {
 
         this._map = [];
 
-        for (var y = 0; y < this.height; y++) {
+        for (let y = 0; y < this.height; y++) {
             this._map[y] = [];
         }
 
         this._entities = [];
 
         this.generate();
-
-        this._player = new Player(this, "green");
     }
 
     get width() {
@@ -158,14 +204,25 @@ class Level {
         return this._entities;
     }
 
-    generate() {
-        let wallFrequency = 0.4;
+    get player() {
+        return this._player;
+    }
 
-        for (var y = 0; y < this.height; y++) {
-            for (var x = 0; x < this.width; x++) {
-                if (x == 0 || y == 0
-                    || x == this.width - 1 || y == this.height - 1
-                    || Math.random() <= wallFrequency) {
+    set player(player) {
+        this._player = player;
+        this.add(player);
+    }
+
+    update() {
+        console.log("Updated");
+    }
+
+    generate() {
+        const wallFrequency = 0.4;
+
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (Math.random() <= wallFrequency) {
                     this.insert(new Wall(), x, y);
                 } else {
                     this.insert(new Floor(), x, y);
@@ -174,8 +231,44 @@ class Level {
         }
     }
 
+    render() {
+        let table = "";
+
+        const display = [];
+
+        for (const [y, row] of this.map.entries()) {
+            display[y] = [];
+            for (const [x, tile] of row.entries()) {
+                display[y][x] = new Tile(tile.character, tile.fg, tile.bg);
+            }
+        }
+
+        for (const entity of this.entities) {
+            display[entity.y][entity.x] = new Tile(entity.character,
+                                                   entity.fg,
+                                                   entity.bg);
+        }
+
+        for (const row of display) {
+            table += "<tr>";
+
+            for (const tile of row) {
+                const style = "font-family:monospace;color:" + tile.fg
+                      + ";background:" + tile.bg + ";border-spacing=0px";
+                table += "<td style=\"" + style + "\">" + tile.character + "</td>";
+            }
+
+            table += "</tr>";
+        }
+
+        mapElement.innerHTML = table;
+    }
+
     add(entity) {
+        entity._level = this;
         this.entities.push(entity);
+        entity.onAdd();
+        this.get(entity.x, entity.y).onStep(entity);
     }
 
     insert(tile, x, y) {
@@ -197,19 +290,19 @@ class CaveLevel extends Level {
     }
 
     countWalls(x, y) {
-        let candidates = [this.get(x - 1, y + 1),
-                          this.get(x + 0, y + 1),
-                          this.get(x + 1, y + 1),
-                          this.get(x - 1, y + 0),
-                          this.get(x + 0, y + 0),
-                          this.get(x + 1, y + 0),
-                          this.get(x - 1, y - 1),
-                          this.get(x + 0, y - 1),
-                          this.get(x + 1, y - 1)];
+        const candidates = [this.get(x - 1, y + 1),
+                            this.get(x + 0, y + 1),
+                            this.get(x + 1, y + 1),
+                            this.get(x - 1, y + 0),
+                            this.get(x + 0, y + 0),
+                            this.get(x + 1, y + 0),
+                            this.get(x - 1, y - 1),
+                            this.get(x + 0, y - 1),
+                            this.get(x + 1, y - 1)];
 
-        var walls = 0;
+        let walls = 0;
 
-        for (var candidate of candidates) {
+        for (const candidate of candidates) {
             walls += candidate instanceof Wall;
         }
 
@@ -217,8 +310,8 @@ class CaveLevel extends Level {
     }
 
     runCellularAutomation() {
-        for (var y = 1; y < this.height - 1; y++) {
-            for (var x = 0; x < this.width - 1; x++) {
+        for (let y = 1; y < this.height - 1; y++) {
+            for (let x = 0; x < this.width - 1; x++) {
                 if (this.countWalls(x, y) >= 5 && !this.isWall(x, y)) {
                     this.insert(new Wall(), x, y);
                 }
@@ -229,43 +322,41 @@ class CaveLevel extends Level {
     generate() {
         super.generate();
 
-        let iterations = 5;
+        const iterations = 3;
 
-        for (var i = 0; i < iterations; i++) {
+        for (let i = 0; i < iterations; i++) {
             this.runCellularAutomation();
         }
     }
 }
 
-let level = new CaveLevel(50, 50);
+level = new CaveLevel(50, 50);
+level.player = new Player("green");
 
-function tick() {
-    var table = "";
+document.addEventListener('keydown', function(event) {
+    movement = {
+        97:  "sw", // Numpad 1
+        98:  "s",  // Numpad 2
+        99:  "se", // Numpad 3
+        100: "w",  // Numpad 4
+        102: "e",  // Numpad 6
+        103: "nw", // Numpad 7
+        104: "n",  // Numpad 8
+        105: "ne"  // Numpad 9
+    };
 
-    let display = [];
+    let moved = false;
 
-    for (row of level.map) {
-        display.push(row);
+    if (event.keyCode in movement) {
+        moved = level.player.move(movement[event.keyCode]);
     }
 
-    for (entity of level.entities) {
-        display[entity.y][entity.x] = entity;
+    // Numpad 5
+    if (event.keyCode == 101 || moved) {
+        level.update();
     }
 
-    for (row of display) {
-        table += "<tr>";
+    level.render();
+});
 
-        for (tile of row) {
-            style = "font-family:monospace;color:" + tile.fg + ";background:"
-                + tile.bg + ";border-spacing=0px";
-            table += "<td style=\"" + style + "\">" + tile.character + "</td>";
-        }
-
-        table += "</tr>";
-    }
-
-    mapElement.innerHTML = table;
-}
-
-tick();
-setInterval(tick, 500);
+level.render();
