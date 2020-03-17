@@ -1,5 +1,7 @@
 const mapElement = document.getElementById("game");
 
+const fps = 10;
+
 const defaultFg = "white";
 const defaultBg = "black";
 
@@ -16,7 +18,7 @@ function randExclusive(min, max) {
 
 let level;
 
-class Tile {
+class Frame {
     constructor(character, fg=defaultFg, bg=defaultBg) {
         this._character = character;
         this._fg = fg;
@@ -46,9 +48,58 @@ class Tile {
     set bg(bg) {
         this._bg = bg;
     }
+}
+
+class Animation {
+    constructor(...frames) {
+        this._frames = frames;
+        this._frameIndex = 0;
+    }
+
+    get frames() {
+        return this._frames;
+    }
+
+    get currentFrame() {
+        return this._frames[this._frameIndex];
+    }
+
+    nextFrame() {
+        let frame = this.frames[this._frameIndex++];
+
+        if (this._frameIndex >= this.frames.length) {
+            this._frameIndex = 0;
+        }
+
+        return frame;
+    }
+}
+
+class Tile {
+    constructor(animation) {
+        if (animation instanceof Animation) {
+            this._animation = animation;
+        } else if (animation instanceof Frame) {
+            this._animation = new Animation(animation);
+        } else {
+            this._animation = new Animation(new Frame(animation));
+        }
+    }
+
+    get animation() {
+        return this._animation;
+    }
+
+    set animation(animation) {
+        this._animation = animation;
+    }
 
     get impassable() {
         return false;
+    }
+
+    update() {
+        // Override this.
     }
 
     onStep(entity) {
@@ -58,17 +109,26 @@ class Tile {
 
 class Floor extends Tile {
     constructor(color=defaultFg) {
-        super(".", color);
+        super(new Frame(".", color));
     }
 }
 
 class Wall extends Tile {
     constructor(color=defaultFg) {
-        super("#", color);
+        super(new Frame("#", color));
     }
 
     get impassable() {
         return true;
+    }
+}
+
+class AnimationTest extends Tile {
+    constructor() {
+        super(new Animation(new Frame("|"),
+                            new Frame("/"),
+                            new Frame("-"),
+                            new Frame("\\")))
     }
 }
 
@@ -84,11 +144,11 @@ directions = {
 };
 
 class Entity extends Tile {
-    constructor(x, y, character, color) {
-        super(character, color);
+    constructor(animation) {
+        super(animation);
 
-        this._x = x;
-        this._y = y;
+        this._x = -1;
+        this._y = -1;
     }
 
     get level() {
@@ -145,7 +205,7 @@ class Entity extends Tile {
                 || !this.collide(this.x, this.y + dy))) {
             this.x += dx;
             this.y += dy;
-            this.level.get(this.x + dx, this.y + dy).onStep(this);
+            this.level.get(this.x, this.y).onStep(this);
             return true;
         }
 
@@ -155,20 +215,14 @@ class Entity extends Tile {
 
 class Player extends Entity {
     constructor(color) {
-        super(0, 0, "@", color);
+        super(new Frame("@", color));
     }
 
     onAdd() {
-        let x = -1;
-        let y = -1;
-
-        while (this.collide(x, y)) {
-            x = randExclusive(0, level.width);
-            y = randExclusive(0, level.height);
+        while (this.collide(this.x, this.y)) {
+            this.x = randExclusive(0, level.width);
+            this.y = randExclusive(0, level.height);
         }
-
-        this.x = x;
-        this.y = y;
     }
 }
 
@@ -214,11 +268,11 @@ class Level {
     }
 
     update() {
-        console.log("Updated");
+        // TODO: make this do something.
     }
 
     generate() {
-        const wallFrequency = 0.4;
+        const wallFrequency = 0.3;
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
@@ -229,6 +283,8 @@ class Level {
                 }
             }
         }
+
+        this.insert(new AnimationTest(), this.width / 2, this.height / 2);
     }
 
     render() {
@@ -239,23 +295,21 @@ class Level {
         for (const [y, row] of this.map.entries()) {
             display[y] = [];
             for (const [x, tile] of row.entries()) {
-                display[y][x] = new Tile(tile.character, tile.fg, tile.bg);
+                display[y][x] = tile.animation.nextFrame();
             }
         }
 
         for (const entity of this.entities) {
-            display[entity.y][entity.x] = new Tile(entity.character,
-                                                   entity.fg,
-                                                   entity.bg);
+            display[entity.y][entity.x] = entity.animation.nextFrame();
         }
 
         for (const row of display) {
             table += "<tr>";
 
-            for (const tile of row) {
-                const style = "font-family:monospace;color:" + tile.fg
-                      + ";background:" + tile.bg + ";border-spacing=0px";
-                table += "<td style=\"" + style + "\">" + tile.character + "</td>";
+            for (const frame of row) {
+                const style = "font-family:monospace;color:" + frame.fg
+                      + ";background:" + frame.bg + ";border-spacing=0px";
+                table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
             table += "</tr>";
@@ -311,7 +365,7 @@ class CaveLevel extends Level {
 
     runCellularAutomation() {
         for (let y = 1; y < this.height - 1; y++) {
-            for (let x = 0; x < this.width - 1; x++) {
+            for (let x = 1; x < this.width - 1; x++) {
                 if (this.countWalls(x, y) >= 5 && !this.isWall(x, y)) {
                     this.insert(new Wall(), x, y);
                 }
@@ -330,8 +384,8 @@ class CaveLevel extends Level {
     }
 }
 
-level = new CaveLevel(50, 50);
-level.player = new Player("green");
+level = new CaveLevel(10, 10);
+level.player = new Player("gray");
 
 document.addEventListener('keydown', function(event) {
     movement = {
@@ -355,8 +409,6 @@ document.addEventListener('keydown', function(event) {
     if (event.keyCode == 101 || moved) {
         level.update();
     }
-
-    level.render();
 });
 
-level.render();
+setInterval(function() { level.render() }, 1000 / fps);
