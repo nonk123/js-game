@@ -462,36 +462,35 @@ level.add(new Player("Gray"));
 
 document.addEventListener('keydown', function(event) {
     movement = {
-        97:  "sw", // Numpad 1
-        98:  "s",  // Numpad 2
-        99:  "se", // Numpad 3
-        100: "w",  // Numpad 4
-        102: "e",  // Numpad 6
-        103: "nw", // Numpad 7
-        104: "n",  // Numpad 8
-        105: "ne"  // Numpad 9
+        "Numpad1": "sw",
+        "Numpad2": "s",
+        "Numpad3": "se",
+        "Numpad4": "w",
+        "Numpad6": "e",
+        "Numpad7": "nw",
+        "Numpad8": "n",
+        "Numpad9": "ne"
     };
 
     let moved = false;
 
-    if (event.keyCode in movement) {
-        moved = level.player.move(movement[event.keyCode]);
+    if (event.code in movement) {
+        moved = level.player.move(movement[event.code]);
     }
 
     const hp = 20;
 
-    if (event.keyCode == 107) {
+    if (event.code == "NumpadAdd") {
         level.player.heal(hp);
         moved = true;
     }
 
-    if (event.keyCode == 109) {
+    if (event.code == "NumpadSubtract") {
         level.player.damage(hp);
         moved = true;
     }
 
-    // Numpad 5
-    if (event.keyCode == 101 || moved) {
+    if (event.code == "Numpad5" || moved) {
         level.update();
     }
 });
