@@ -1,4 +1,5 @@
 const mapElement = document.getElementById("game");
+const messagesElement = document.getElementById("messages");
 
 const fps = 10;
 
@@ -15,6 +16,13 @@ function rand(min, max) {
 function randExclusive(min, max) {
     return rand(min, max - 1);
 }
+
+function message(text) {
+    messagesElement.innerHTML += text + "<br>";
+    messagesElement.scrollTop = messagesElement.scrollHeight;
+}
+
+message('<span style="color:purple">Welcome!</span>')
 
 let level;
 
@@ -198,12 +206,12 @@ class Entity extends Tile {
     }
 
     onDeath() {
-        console.log("You are dead!");
+        message('<span style="color:red">You are dead!</span>');
         return this.level.add(new Corpse(this));
     }
 
     onRevive() {
-        console.log("You have been revived!");
+        message('<span style="color:green">You have been revived!</span>');
     }
 
     onRemove() {
@@ -309,7 +317,9 @@ class Level {
 
         this._entities = [];
 
+        message('<span style="color:purple">Generating level...</span>')
         this.generate();
+        message('<span style="color:purple">Done! Have fun!</span>')
     }
 
     get width() {
@@ -375,7 +385,8 @@ class Level {
 
             for (const frame of row) {
                 const style = "font-family:monospace;color:" + frame.fg
-                      + ";background:" + frame.bg + ";border-spacing=0px";
+                      + ";background:" + frame.bg + ";border-spacing=0px"
+                      + ";font-size: 2vw";
                 table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
@@ -457,7 +468,7 @@ class CaveLevel extends Level {
     }
 }
 
-level = new CaveLevel(10, 10);
+level = new CaveLevel(30, 30);
 level.add(new Player("Gray"));
 
 document.addEventListener('keydown', function(event) {

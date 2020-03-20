@@ -4,10 +4,19 @@
     <link rel="stylesheet" href="styles.css">
     <title>JS Game</title>
   </head>
-  <body>
-    <h1>JS Game</h1>
-    <div id="game-div">
-      <table id="game" style="border-collapse:collapse"></table>
+  <body style="margin: 0;">
+    <div style="display: flex;">
+      <div style="width: 70vw; height: 100vh; float: left;">
+        <table id="game" style="border-collapse: collapse; overflow: scroll"></table>
+      </div>
+      <div id="messages" style="width: 30vw;
+                                height: 100vh;
+                                flex-grow: 1;
+                                font-family: monospace;
+                                font-size: 2vw;
+                                vertical-align: top;
+                                overflow-y: scroll;">
+      </div>
     </div>
     <script src="game.js"></script>
   </body>
