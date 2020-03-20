@@ -2,8 +2,8 @@ const mapElement = document.getElementById("game");
 
 const fps = 10;
 
-const defaultFg = "white";
-const defaultBg = "black";
+const defaultFg = "White";
+const defaultBg = "Black";
 
 function rand(min, max) {
     min = Math.ceil(min);
@@ -123,15 +123,6 @@ class Wall extends Tile {
     }
 }
 
-class AnimationTest extends Tile {
-    constructor() {
-        super(new Animation(new Frame("|"),
-                            new Frame("/"),
-                            new Frame("-"),
-                            new Frame("\\")))
-    }
-}
-
 directions = {
     "w":  [-1,  0],
     "e":  [ 1,  0],
@@ -147,6 +138,8 @@ class Entity extends Tile {
     constructor(animation) {
         super(animation);
 
+        this._hp = 100;
+
         this._x = -1;
         this._y = -1;
     }
@@ -157,6 +150,14 @@ class Entity extends Tile {
 
     set level(_level) {
         // Unused.
+    }
+
+    get hp() {
+        return this._hp;
+    }
+
+    set hp(hp) {
+        this._hp = hp;
     }
 
     get x() {
@@ -177,6 +178,36 @@ class Entity extends Tile {
         if (y >= 0 && y < this.level.height) {
             this._y = y;
         }
+    }
+
+    damage(x) {
+        this.hp -= x;
+
+        if (this.hp <= 0 && this.hp + x > 0) {
+            this.onDeath();
+            this.level.remove(this);
+        }
+    }
+
+    heal(x) {
+        this.hp += x;
+
+        if (this.hp - x <= 0 && this.hp > 0) {
+            this.onRevive();
+        }
+    }
+
+    onDeath() {
+        console.log("You are dead!");
+        return this.level.add(new Corpse(this));
+    }
+
+    onRevive() {
+        console.log("You have been revived!");
+    }
+
+    onRemove() {
+        // Override this.
     }
 
     onAdd() {
@@ -213,12 +244,51 @@ class Entity extends Tile {
     }
 }
 
+function getDeadAnimation(entity) {
+    let frame = entity.animation.frames[0];
+    return new Frame(frame.character, frame.fg, "DarkRed");
+}
+
+class Corpse extends Entity {
+    constructor(entity) {
+        super(getDeadAnimation(entity));
+
+        this.owner = entity;
+    }
+
+    onRevive() {
+        this.level.add(this.owner);
+        this.level.remove(this);
+
+        this.owner.x = this.x;
+        this.owner.y = this.y;
+        this.owner.hp = this.hp;
+
+        this.owner.onRevive();
+    }
+
+    onAdd() {
+        this.x = this.owner.x;
+        this.y = this.owner.y;
+        this.hp = this.owner.hp;
+    }
+
+    move(dx, dy) {
+    }
+}
+
 class Player extends Entity {
     constructor(color) {
         super(new Frame("@", color));
     }
 
+    onDeath() {
+        return this.level.player = super.onDeath();
+    }
+
     onAdd() {
+        this.level.player = this;
+
         while (this.collide(this.x, this.y)) {
             this.x = randExclusive(0, level.width);
             this.y = randExclusive(0, level.height);
@@ -264,7 +334,6 @@ class Level {
 
     set player(player) {
         this._player = player;
-        this.add(player);
     }
 
     update() {
@@ -283,8 +352,6 @@ class Level {
                 }
             }
         }
-
-        this.insert(new AnimationTest(), this.width / 2, this.height / 2);
     }
 
     render() {
@@ -323,6 +390,12 @@ class Level {
         this.entities.push(entity);
         entity.onAdd();
         this.get(entity.x, entity.y).onStep(entity);
+        return entity;
+    }
+
+    remove(entity) {
+        entity.onRemove();
+        this.entities.splice(this.entities.indexOf(entity), 1);
     }
 
     insert(tile, x, y) {
@@ -385,7 +458,7 @@ class CaveLevel extends Level {
 }
 
 level = new CaveLevel(10, 10);
-level.player = new Player("gray");
+level.add(new Player("Gray"));
 
 document.addEventListener('keydown', function(event) {
     movement = {
@@ -403,6 +476,18 @@ document.addEventListener('keydown', function(event) {
 
     if (event.keyCode in movement) {
         moved = level.player.move(movement[event.keyCode]);
+    }
+
+    const hp = 20;
+
+    if (event.keyCode == 107) {
+        level.player.heal(hp);
+        moved = true;
+    }
+
+    if (event.keyCode == 109) {
+        level.player.damage(hp);
+        moved = true;
     }
 
     // Numpad 5
