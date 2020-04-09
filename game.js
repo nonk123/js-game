@@ -201,9 +201,23 @@ class Entity extends Tile {
 
     damage(dmg) {
         this.hp -= dmg;
+    }
 
-        // hp + dmg is negative or zero if you're already dead.
-        // The check should be unnecessary because the entity is removed anyway.
+    randomSpot() {
+        let x, y = -1;
+
+        while (this.collide(x, y)) {
+            x = randExclusive(0, level.width);
+            y = randExclusive(0, level.height);
+        }
+
+        return [x, y];
+    }
+
+    damage(dmg) {
+        this.hp -= dmg;
+
+        // Hp before getting damaged must be positive in order to actually die.
         if (this.hp <= 0 && this.hp + dmg > 0) {
             this.onDeath();
             this.level.remove(this);
@@ -372,14 +386,8 @@ class Player extends Entity {
     }
 
     onAdd() {
+        [this.x, this.y] = this.randomSpot();
         this.level.player = this;
-
-        // Select a random, not occupied spot to spawn in.
-        while (this.collide(this.x, this.y)) {
-            this.x = randExclusive(0, level.width);
-            this.y = randExclusive(0, level.height);
-        }
-
         this.level.camera = new Camera(this.level);
     }
 
