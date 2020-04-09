@@ -7,6 +7,7 @@ const defaultFg = "White";
 const defaultBg = "Black";
 
 function rand(min, max) {
+    // Just in case they're not integers.
     min = Math.ceil(min);
     max = Math.floor(max);
 
@@ -23,14 +24,19 @@ function clamp(x, min, max) {
 
 function message(text) {
     messagesElement.innerHTML += text + "<br>";
+
+    // This somehow scrolls down to the bottom of the message log.
     messagesElement.scrollTop = messagesElement.scrollHeight;
 }
 
 message('<span style="color:purple">Welcome!</span>')
 
+// Level is hoisted for quite a while, so the variable has to be declared here.
 let level;
 
 class Frame {
+    // `character' defaults to no-break space because regular space breaks
+    // everything.
     constructor(character="&#160", fg=defaultFg, bg=defaultBg) {
         this._character = character;
         this._fg = fg;
@@ -73,7 +79,7 @@ class Animation {
     }
 
     get currentFrame() {
-        return this._frames[this._frameIndex];
+        return this.frames[this._frameIndex];
     }
 
     nextFrame() {
@@ -88,6 +94,7 @@ class Animation {
 }
 
 class Tile {
+    // `animation' - either an Animation, a Frame, or a character.
     constructor(animation) {
         if (animation instanceof Animation) {
             this._animation = animation;
@@ -177,7 +184,7 @@ class Entity extends Tile {
     }
 
     set x(x) {
-        if (x >= 0 && x < this.level.width) {
+        if (this.level.isInBounds(x, 0)) {
             this._x = x;
         }
     }
@@ -187,24 +194,27 @@ class Entity extends Tile {
     }
 
     set y(y) {
-        if (y >= 0 && y < this.level.height) {
+        if (this.level.isInBounds(0, y)) {
             this._y = y;
         }
     }
 
-    damage(x) {
-        this.hp -= x;
+    damage(dmg) {
+        this.hp -= dmg;
 
-        if (this.hp <= 0 && this.hp + x > 0) {
+        // hp + dmg is negative or zero if you're already dead.
+        // The check should be unnecessary because the entity is removed anyway.
+        if (this.hp <= 0 && this.hp + dmg > 0) {
             this.onDeath();
             this.level.remove(this);
         }
     }
 
-    heal(x) {
-        this.hp += x;
+    heal(h) {
+        this.hp += h;
 
-        if (this.hp - x <= 0 && this.hp > 0) {
+        // Hp before healing is negative or zero if you're dead, of course.
+        if (this.hp - h <= 0 && this.hp > 0) {
             this.onRevive();
         }
     }
@@ -215,7 +225,7 @@ class Entity extends Tile {
     }
 
     onRevive() {
-        message('<span style="color:green">You have been revived!</span>');
+        message('<span style="color:green">You have come back to life!</span>');
     }
 
     onRemove() {
@@ -226,9 +236,9 @@ class Entity extends Tile {
         // Override this.
     }
 
+    // Return true if you can't go through the tile at [x; y].
     collide(x=this.x, y=this.y) {
-        if (x >= 0 && x < this.level.width
-            && y >= 0 && y < this.level.height) {
+        if (this.level.isInBounds(x, y)) {
             return this.level.get(x, y).impassable;
         } else {
             return true;
@@ -236,6 +246,7 @@ class Entity extends Tile {
     }
 
     move(direction) {
+        // String directions like N, S, NW, SE are viable, too.
         if (typeof direction == "string") {
             direction = directions[direction];
         }
@@ -244,6 +255,7 @@ class Entity extends Tile {
         const dy = direction[1];
 
         if (!this.collide(this.x + dx, this.y + dy)
+            // You can't squeeze yourself between two walls, can you?
             && (!this.collide(this.x + dx, this.y)
                 || !this.collide(this.x, this.y + dy))) {
             this.x += dx;
@@ -256,6 +268,7 @@ class Entity extends Tile {
     }
 }
 
+// "Dead animation" is just the first frame with a blood-covered background.
 function getDeadAnimation(entity) {
     let frame = entity.animation.frames[0];
     return new Frame(frame.character, frame.fg, "DarkRed");
@@ -265,6 +278,7 @@ class Corpse extends Entity {
     constructor(entity) {
         super(getDeadAnimation(entity));
 
+        // The entity still exists between the worlds, I guess.
         this.owner = entity;
     }
 
@@ -286,6 +300,7 @@ class Corpse extends Entity {
     }
 
     move(dx, dy) {
+        // Corpses can't move by themselves, unless they're zombies.
     }
 }
 
@@ -297,10 +312,6 @@ class Camera {
         this.y = level.player.y;
 
         this.radius = 10;
-    }
-
-    get diameter() {
-        return this.radius * 2;
     }
 
     isInside(dx, dy) {
@@ -356,12 +367,14 @@ class Player extends Entity {
     }
 
     onDeath() {
+        // Set the level's player to their own corpse.
         return this.level.player = super.onDeath();
     }
 
     onAdd() {
         this.level.player = this;
 
+        // Select a random, not occupied spot to spawn in.
         while (this.collide(this.x, this.y)) {
             this.x = randExclusive(0, level.width);
             this.y = randExclusive(0, level.height);
@@ -372,6 +385,7 @@ class Player extends Entity {
 
     move(dx, dy) {
         if (super.move(dx, dy)) {
+            // Camera has to be moved, too.
             this.level.camera.x = this.x;
             this.level.camera.y = this.y;
             return true;
@@ -387,10 +401,6 @@ class Level {
         this._height = height;
 
         this._map = [];
-
-        for (let y = 0; y < this.height; y++) {
-            this._map[y] = [];
-        }
 
         this._entities = [];
 
@@ -428,7 +438,7 @@ class Level {
     }
 
     generate() {
-        const wallFrequency = 0.3;
+        const wallFrequency = 0.325;
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
@@ -448,6 +458,7 @@ class Level {
             table += "<tr>";
 
             for (const frame of row) {
+                // Ugly, on-the-fly style generation.
                 const style
                       = "font-family:monospace"
                       + ";color:" + frame.fg
@@ -477,11 +488,16 @@ class Level {
     }
 
     insert(tile, x, y) {
+        if (!this.map[y]) {
+            this.map[y] = [];
+        }
+
         this.map[y][x] = tile;
     }
 
     get(x, y) {
-        return this.map[y][x];
+        // map[y][x] will throw an exception if map[y] is undefined.
+        return this.map[y] ? this.map[y][x] : undefined;
     }
 
     isInBounds(x, y) {
@@ -499,20 +515,21 @@ class CaveLevel extends Level {
     }
 
     countWalls(x, y) {
-        const candidates = [this.get(x - 1, y + 1),
-                            this.get(x + 0, y + 1),
-                            this.get(x + 1, y + 1),
-                            this.get(x - 1, y + 0),
-                            this.get(x + 0, y + 0),
-                            this.get(x + 1, y + 0),
-                            this.get(x - 1, y - 1),
-                            this.get(x + 0, y - 1),
-                            this.get(x + 1, y - 1)];
+        // Very ugly, but this includes all walls in a 3x3 area around [x; y].
+        const candidates = [[x - 1, y + 1],
+                            [x + 0, y + 1],
+                            [x + 1, y + 1],
+                            [x - 1, y + 0],
+                            [x + 0, y + 0],
+                            [x + 1, y + 0],
+                            [x - 1, y - 1],
+                            [x + 0, y - 1],
+                            [x + 1, y - 1]];
 
         let walls = 0;
 
-        for (const candidate of candidates) {
-            walls += candidate instanceof Wall;
+        for (const position of candidates) {
+            walls += this.isWall(...position)
         }
 
         return walls;
@@ -521,7 +538,8 @@ class CaveLevel extends Level {
     runCellularAutomation() {
         for (let y = 1; y < this.height - 1; y++) {
             for (let x = 1; x < this.width - 1; x++) {
-                if (this.countWalls(x, y) >= 5 && !this.isWall(x, y)) {
+                // 4-5 rule.
+                if (this.countWalls(x, y) >= 5) {
                     this.insert(new Wall(), x, y);
                 }
             }
@@ -531,7 +549,7 @@ class CaveLevel extends Level {
     generate() {
         super.generate();
 
-        const iterations = 3;
+        const iterations = 4;
 
         for (let i = 0; i < iterations; i++) {
             this.runCellularAutomation();
@@ -539,7 +557,7 @@ class CaveLevel extends Level {
     }
 }
 
-level = new CaveLevel(40, 40);
+level = new CaveLevel(80, 80);
 level.add(new Player("Gray"));
 
 document.addEventListener('keydown', function(event) {
@@ -558,18 +576,6 @@ document.addEventListener('keydown', function(event) {
 
     if (event.code in movement) {
         moved = level.player.move(movement[event.code]);
-    }
-
-    const hp = 20;
-
-    if (event.code == "NumpadAdd") {
-        level.player.heal(hp);
-        moved = true;
-    }
-
-    if (event.code == "NumpadSubtract") {
-        level.player.damage(hp);
-        moved = true;
     }
 
     if (event.code == "Numpad5" || moved) {
