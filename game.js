@@ -110,7 +110,7 @@ class Tile {
         // Override this.
     }
 
-    onStep(entity) {
+    onStep(_entity) {
         // Override this.
     }
 }
