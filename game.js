@@ -22,6 +22,14 @@ function clamp(x, min, max) {
     return Math.min(max, Math.max(x, min));
 }
 
+function lerp(x0, x1, t=0.1) {
+    return x0 + (x1 - x0)*t;
+}
+
+function lerp2(x0, x1, y0, y1, t=0.1) {
+    return [lerp(x0, x1, t), lerp(y0, y1, t)];
+}
+
 function message(text) {
     messagesElement.innerHTML += text + "<br>";
 
@@ -117,6 +125,11 @@ class Tile {
         return false;
     }
 
+    // True if this Tile can't be seen through.
+    get opaque() {
+        return false;
+    }
+
     update() {
         // Override this.
     }
@@ -138,6 +151,10 @@ class Wall extends Tile {
     }
 
     get impassable() {
+        return true;
+    }
+
+    get opaque() {
         return true;
     }
 }
@@ -386,6 +403,27 @@ class Camera extends Movable {
         return dx*dx + dy*dy <= this.radius * this.radius;
     }
 
+    canSee(x, y) {
+        let dist = 1;
+
+        let blocked = false;
+
+        while (dist <= this.radius) {
+            const p = lerp2(this.anchorX, x, this.anchorY, y, dist++ / this.radius);
+            const tile = this.level.get(...p);
+
+            if (tile.opaque) {
+                if (blocked && tile != this.level.get(x, y)) {
+                    return false;
+                } else {
+                    blocked = true;
+                }
+            }
+        }
+
+        return true;
+    }
+
     draw(dx, dy, frame) {
         dx += this.radius;
         dy += this.radius;
@@ -412,7 +450,9 @@ class Camera extends Movable {
             for (let dx = -this.radius; dx <= this.radius; dx++) {
                 const [x, y] = this.toWorld(dx, dy);
 
-                if (this.level.isInBounds(x, y) && this.isInside(dx, dy)) {
+                if (this.level.isInBounds(x, y)
+                    && this.isInside(dx, dy)
+                    && this.canSee(x, y)) {
                     this.draw(dx, dy, this.level.get(x, y).animation.nextFrame());
                 } else {
                     this.draw(dx, dy, new Frame());
@@ -560,6 +600,10 @@ class Level {
     }
 
     get(x, y) {
+        // Just in case x and y aren't integers, e.g. interpolated.
+        x = Math.round(x);
+        y = Math.round(y);
+
         // map[y][x] will throw an exception if map[y] is undefined.
         return this.map[y] ? this.map[y][x] : undefined;
     }
