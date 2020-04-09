@@ -334,41 +334,83 @@ class Corpse extends Entity {
     }
 }
 
-class Camera {
+class Camera extends Movable {
     constructor(level) {
-        this.level = level;
+        super(new Frame());
 
-        this.x = level.player.x;
-        this.y = level.player.y;
+        this.anchorOn(level.player);
+        this._radius = 10;
+    }
 
-        this.radius = 10;
+    get phasing() {
+        return true;
+    }
+
+    get dummy() {
+        return true;
+    }
+
+    get radius() {
+        return this._radius;
+    }
+
+    set radius(radius) {
+        this._radius = radius;
+    }
+
+    get anchorX() {
+        return this._anchorX;
+    }
+
+    set anchorX(anchorX) {
+        this._anchorX = anchorX;
+    }
+
+    get anchorY() {
+        return this._anchorY;
+    }
+
+    set anchorY(anchorY) {
+        this._anchorY = anchorY;
+    }
+
+    anchorOn(movable) {
+        this.anchorX = this.x = movable.x;
+        this.anchorY = this.y = movable.y;
     }
 
     isInside(dx, dy) {
+        dx += this.x - this.anchorX;
+        dy += this.y - this.anchorY;
+
         return dx*dx + dy*dy <= this.radius * this.radius;
     }
 
-    draw(x, y, frame) {
-        x += this.radius;
-        y += this.radius;
+    draw(dx, dy, frame) {
+        dx += this.radius;
+        dy += this.radius;
 
-        if (!this.display[y]) {
-            this.display[y] = [];
+        if (!this.display[dy]) {
+            this.display[dy] = [];
         }
 
-        this.display[y][x] = frame;
+        this.display[dy][dx] = frame;
+    }
+
+    toWorld(dx, dy) {
+        return [this.x + dx, this.y + dy];
+    }
+
+    toCamera(x, y) {
+        return [x - this.x, y - this.y];
     }
 
     crop() {
         this.display = [];
 
-        const width = this.level.map.length;
-        const height = this.level.map[0].length;
-
         for (let dy = -this.radius; dy <= this.radius; dy++) {
             for (let dx = -this.radius; dx <= this.radius; dx++) {
-                const x = this.x + dx;
-                const y = this.y + dy;
+                const [x, y] = this.toWorld(dx, dy);
 
                 if (this.level.isInBounds(x, y) && this.isInside(dx, dy)) {
                     this.draw(dx, dy, this.level.get(x, y).animation.nextFrame());
@@ -379,8 +421,7 @@ class Camera {
         }
 
         for (const entity of this.level.entities) {
-            const dx = entity.x - this.x;
-            const dy = entity.y - this.y;
+            const [dx, dy] = this.toCamera(entity.x, entity.y);
 
             if (this.isInside(dx, dy)) {
                 this.draw(dx, dy, entity.animation.nextFrame());
@@ -409,9 +450,8 @@ class Player extends Entity {
 
     move(dx, dy) {
         if (super.move(dx, dy)) {
-            // Camera has to be moved, too.
-            this.level.camera.x = this.x;
-            this.level.camera.y = this.y;
+            // Anchor camera as well.
+            this.level.camera.anchorOn(this);
             return true;
         } else {
             return false;
@@ -581,28 +621,64 @@ class CaveLevel extends Level {
     }
 }
 
+class GameState {
+    constructor() {
+        this.moving = this.level.player;
+    }
+
+    get moving() {
+        return this._moving;
+    }
+
+    set moving(moving) {
+        this._moving = moving;
+    }
+
+    get level() {
+        return level;
+    }
+
+    move(direction) {
+        const ret = this.moving.move(direction);
+        return this.moving.dummy ? false : ret;
+    }
+}
+
 level = new CaveLevel(80, 80);
 level.add(new Player("Gray"));
 
+let state = new GameState();
+
 document.addEventListener('keydown', function(event) {
     movement = {
-        "Numpad1": "sw",
-        "Numpad2": "s",
-        "Numpad3": "se",
-        "Numpad4": "w",
-        "Numpad6": "e",
-        "Numpad7": "nw",
-        "Numpad8": "n",
-        "Numpad9": "ne"
+        "1": "sw",
+        "2": "s",
+        "3": "se",
+        "4": "w",
+        "6": "e",
+        "7": "nw",
+        "8": "n",
+        "9": "ne"
     };
+
+    const key = event.key
 
     let moved = false;
 
-    if (event.code in movement) {
-        moved = level.player.move(movement[event.code]);
+    if (key == "l") {
+        state.moving = level.camera;
+        message('<span style="color:gray">Looking around</span>')
+    } else if (key == "Escape") {
+        state.moving = level.player;
+        level.camera.anchorOn(level.player);
+        message('<span style="color:gray">Back to the game</span>')
     }
 
-    if (event.code == "Numpad5" || moved) {
+    if (key in movement) {
+        moved = state.move(movement[key]);
+    }
+
+    if (key == "5" || moved) {
         level.update();
     }
 });
