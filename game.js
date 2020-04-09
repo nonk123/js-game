@@ -470,7 +470,7 @@ class Level {
 
         message('<span style="color:purple">Generating level...</span>')
         this.generate();
-        message('<span style="color:purple">Done! Have fun!</span>')
+        message('<span style="color:purple">Done. Have fun!</span>')
     }
 
     get width() {
