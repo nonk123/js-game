@@ -168,7 +168,7 @@ class Entity extends Tile {
     }
 
     set level(_level) {
-        // Unused.
+        // Placeholder.
     }
 
     get hp() {
