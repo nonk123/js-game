@@ -17,6 +17,10 @@ function randExclusive(min, max) {
     return rand(min, max - 1);
 }
 
+function clamp(x, min, max) {
+    return Math.min(max, Math.max(x, min));
+}
+
 function message(text) {
     messagesElement.innerHTML += text + "<br>";
     messagesElement.scrollTop = messagesElement.scrollHeight;
@@ -27,7 +31,7 @@ message('<span style="color:purple">Welcome!</span>')
 let level;
 
 class Frame {
-    constructor(character, fg=defaultFg, bg=defaultBg) {
+    constructor(character="&#160", fg=defaultFg, bg=defaultBg) {
         this._character = character;
         this._fg = fg;
         this._bg = bg;
@@ -285,6 +289,67 @@ class Corpse extends Entity {
     }
 }
 
+class Camera {
+    constructor(level) {
+        this.level = level;
+
+        this.x = level.player.x;
+        this.y = level.player.y;
+
+        this.radius = 10;
+    }
+
+    get diameter() {
+        return this.radius * 2;
+    }
+
+    isInside(dx, dy) {
+        return dx*dx + dy*dy <= this.radius * this.radius;
+    }
+
+    draw(x, y, frame) {
+        x += this.radius;
+        y += this.radius;
+
+        if (!this.display[y]) {
+            this.display[y] = [];
+        }
+
+        this.display[y][x] = frame;
+    }
+
+    crop() {
+        this.display = [];
+
+        const width = this.level.map.length;
+        const height = this.level.map[0].length;
+
+        for (let dy = -this.radius; dy <= this.radius; dy++) {
+            for (let dx = -this.radius; dx <= this.radius; dx++) {
+                const x = this.x + dx;
+                const y = this.y + dy;
+
+                if (this.level.isInBounds(x, y) && this.isInside(dx, dy)) {
+                    this.draw(dx, dy, this.level.get(x, y).animation.nextFrame());
+                } else {
+                    this.draw(dx, dy, new Frame());
+                }
+            }
+        }
+
+        for (const entity of this.level.entities) {
+            const dx = entity.x - this.x;
+            const dy = entity.y - this.y;
+
+            if (this.isInside(dx, dy)) {
+                this.draw(dx, dy, entity.animation.nextFrame());
+            }
+        }
+
+        return this.display;
+    }
+}
+
 class Player extends Entity {
     constructor(color) {
         super(new Frame("@", color));
@@ -300,6 +365,18 @@ class Player extends Entity {
         while (this.collide(this.x, this.y)) {
             this.x = randExclusive(0, level.width);
             this.y = randExclusive(0, level.height);
+        }
+
+        this.level.camera = new Camera(this.level);
+    }
+
+    move(dx, dy) {
+        if (super.move(dx, dy)) {
+            this.level.camera.x = this.x;
+            this.level.camera.y = this.y;
+            return true;
+        } else {
+            return false;
         }
     }
 }
@@ -367,26 +444,16 @@ class Level {
     render() {
         let table = "";
 
-        const display = [];
-
-        for (const [y, row] of this.map.entries()) {
-            display[y] = [];
-            for (const [x, tile] of row.entries()) {
-                display[y][x] = tile.animation.nextFrame();
-            }
-        }
-
-        for (const entity of this.entities) {
-            display[entity.y][entity.x] = entity.animation.nextFrame();
-        }
-
-        for (const row of display) {
+        for (const row of level.camera.crop()) {
             table += "<tr>";
 
             for (const frame of row) {
-                const style = "font-family:monospace;color:" + frame.fg
-                      + ";background:" + frame.bg + ";border-spacing=0px"
-                      + ";font-size: 2vw";
+                const style
+                      = "font-family:monospace"
+                      + ";color:" + frame.fg
+                      + ";background:" + frame.bg
+                      + ";border-spacing=0px"
+                      + ";font-size: 1vw;";
                 table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
@@ -415,6 +482,10 @@ class Level {
 
     get(x, y) {
         return this.map[y][x];
+    }
+
+    isInBounds(x, y) {
+        return x >= 0 && y >= 0 && x < this.width && y < this.height;
     }
 }
 
@@ -468,7 +539,7 @@ class CaveLevel extends Level {
     }
 }
 
-level = new CaveLevel(30, 30);
+level = new CaveLevel(40, 40);
 level.add(new Player("Gray"));
 
 document.addEventListener('keydown', function(event) {
