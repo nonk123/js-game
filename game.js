@@ -153,14 +153,22 @@ directions = {
     "se": [ 1,  1]
 };
 
-class Entity extends Tile {
+class Movable extends Tile {
     constructor(animation) {
-        super(animation);
+        super(animation)
 
-        this._hp = 100;
+        this._x = 0;
+        this._y = 0;
+    }
 
-        this._x = -1;
-        this._y = -1;
+    // True if this Movable can phase through walls.
+    get phasing() {
+        return false;
+    }
+
+    // True if this Movable doesn't trigger Tile::onStep() nor a level update.
+    get dummy() {
+        return false;
     }
 
     get level() {
@@ -169,14 +177,6 @@ class Entity extends Tile {
 
     set level(_level) {
         // Placeholder.
-    }
-
-    get hp() {
-        return this._hp;
-    }
-
-    set hp(hp) {
-        this._hp = hp;
     }
 
     get x() {
@@ -199,10 +199,6 @@ class Entity extends Tile {
         }
     }
 
-    damage(dmg) {
-        this.hp -= dmg;
-    }
-
     randomSpot() {
         let x, y = -1;
 
@@ -212,6 +208,57 @@ class Entity extends Tile {
         }
 
         return [x, y];
+    }
+
+    // Return true if you can't go through the tile at [x; y].
+    collide(x=this.x, y=this.y) {
+        if (this.level.isInBounds(x, y)) {
+            return this.level.get(x, y).impassable;
+        } else {
+            return true;
+        }
+    }
+
+    move(direction) {
+        // String directions like N, S, NW, SE are viable, too.
+        if (typeof direction == "string") {
+            direction = directions[direction];
+        }
+
+        const dx = direction[0];
+        const dy = direction[1];
+
+        if (this.phasing
+            || (!this.collide(this.x + dx, this.y + dy)
+                && (!this.collide(this.x + dx, this.y)
+                    || !this.collide(this.x, this.y + dy)))) {
+            this.x += dx;
+            this.y += dy;
+
+            if (!this.dummy) {
+                this.level.get(this.x, this.y).onStep(this);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+}
+
+class Entity extends Movable {
+    constructor(animation) {
+        super(animation);
+
+        this._hp = 100;
+    }
+
+    get hp() {
+        return this._hp;
+    }
+
+    set hp(hp) {
+        this._hp = hp;
     }
 
     damage(dmg) {
@@ -248,37 +295,6 @@ class Entity extends Tile {
 
     onAdd() {
         // Override this.
-    }
-
-    // Return true if you can't go through the tile at [x; y].
-    collide(x=this.x, y=this.y) {
-        if (this.level.isInBounds(x, y)) {
-            return this.level.get(x, y).impassable;
-        } else {
-            return true;
-        }
-    }
-
-    move(direction) {
-        // String directions like N, S, NW, SE are viable, too.
-        if (typeof direction == "string") {
-            direction = directions[direction];
-        }
-
-        const dx = direction[0];
-        const dy = direction[1];
-
-        if (!this.collide(this.x + dx, this.y + dy)
-            // You can't squeeze yourself between two walls, can you?
-            && (!this.collide(this.x + dx, this.y)
-                || !this.collide(this.x, this.y + dy))) {
-            this.x += dx;
-            this.y += dy;
-            this.level.get(this.x, this.y).onStep(this);
-            return true;
-        }
-
-        return false;
     }
 }
 
