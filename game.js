@@ -8,8 +8,8 @@ const defaultBg = "Black";
 
 function rand(min, max) {
     // Just in case they're not integers.
-    min = Math.ceil(min);
-    max = Math.floor(max);
+    min = Math.floor(min);
+    max = Math.ceil(max);
 
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
