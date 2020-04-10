@@ -552,12 +552,7 @@ class Level {
     }
 
     render() {
-        const minHeight = 13;
-        const maxHeight = 25;
-
-        let lineHeight = window.innerHeight / (this.camera.radius + 1) / 2;
-        lineHeight = clamp(Math.floor(lineHeight), minHeight, maxHeight);
-        lineHeight += "px";
+        const fs = "3.15vh";
 
         let table = "";
 
@@ -571,8 +566,8 @@ class Level {
                       + ";color:" + frame.fg
                       + ";background:" + frame.bg
                       + ";border-spacing: 0px"
-                      + ";line-height: " + lineHeight
-                      + ";font-size: " + lineHeight;
+                      + ";line-spacing: " + fs
+                      + ";font-size: " + fs;
                 table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
