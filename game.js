@@ -22,14 +22,6 @@ function clamp(x, min, max) {
     return Math.min(max, Math.max(x, min));
 }
 
-function lerp(x0, x1, t=0.1) {
-    return x0 + (x1 - x0)*t;
-}
-
-function lerp2(x0, x1, y0, y1, t=0.1) {
-    return [lerp(x0, x1, t), lerp(y0, y1, t)];
-}
-
 function message(text) {
     messagesElement.innerHTML += text + "<br>";
 
@@ -403,22 +395,26 @@ class Camera extends Movable {
         return dx*dx + dy*dy <= this.radius * this.radius;
     }
 
-    canSee(x, y) {
-        let dist = 1;
+    canSee(tileX, tileY) {
+        const dx = tileX - this.anchorX;
+        const dy = tileY - this.anchorY;
 
-        let blocked = false;
+        const step = Math.abs(dx) >= Math.abs(dy) ? Math.abs(dx) : Math.abs(dy);
 
-        while (dist <= this.radius) {
-            const p = lerp2(this.anchorX, x, this.anchorY, y, dist++ / this.radius);
-            const tile = this.level.get(...p);
+        let x = this.anchorX;
+        let y = this.anchorY;
 
-            if (tile.opaque) {
-                if (blocked && tile != this.level.get(x, y)) {
-                    return false;
-                } else {
-                    blocked = true;
-                }
+        let dist = 0;
+
+        while (dist < step) {
+            if (this.level.get(x, y).opaque) {
+                return false;
             }
+
+            x += dx / step;
+            y += dy / step;
+
+            dist++;
         }
 
         return true;
