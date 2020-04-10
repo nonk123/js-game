@@ -556,6 +556,8 @@ class Level {
     }
 
     render() {
+        const d = this.camera.radius*2 + 1;
+
         let table = "";
 
         for (const row of level.camera.crop()) {
@@ -567,8 +569,8 @@ class Level {
                       = "font-family:monospace"
                       + ";color:" + frame.fg
                       + ";background:" + frame.bg
-                      + ";border-spacing=0px"
-                      + ";font-size: 1vw;";
+                      + ";border-spacing: 0px"
+                      + ";font-size: " + this.height / d + "vh;";
                 table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
