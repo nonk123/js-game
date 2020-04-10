@@ -546,7 +546,7 @@ class Level {
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                if (Math.random() <= wallFrequency) {
+                if (this.isOnBorder(x, y) || Math.random() <= wallFrequency) {
                     this.insert(new Wall(), x, y);
                 } else {
                     this.insert(new Floor(), x, y);
@@ -612,6 +612,10 @@ class Level {
 
     isInBounds(x, y) {
         return x >= 0 && y >= 0 && x < this.width && y < this.height;
+    }
+
+    isOnBorder(x, y) {
+        return x == 0 || y == 0 || x == this.width - 1 || y == this.height - 1;
     }
 }
 
