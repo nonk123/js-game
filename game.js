@@ -706,7 +706,7 @@ level.add(new Player("Gray"));
 let state = new GameState();
 
 document.addEventListener('keydown', function(event) {
-    movement = {
+    const movement = {
         "1": "sw",
         "2": "s",
         "3": "se",
@@ -714,10 +714,14 @@ document.addEventListener('keydown', function(event) {
         "6": "e",
         "7": "nw",
         "8": "n",
-        "9": "ne"
+        "9": "ne",
+        "ArrowLeft":  "w",
+        "ArrowRight": "e",
+        "ArrowUp":    "n",
+        "ArrowDown":  "s"
     };
 
-    const key = event.key
+    const key = event.key;
 
     let moved = false;
 
