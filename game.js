@@ -556,7 +556,7 @@ class Level {
     }
 
     render() {
-        const d = this.camera.radius*2 + 1;
+        const lineHeight = window.innerHeight / (this.camera.radius + 1) / 2;
 
         let table = "";
 
@@ -570,7 +570,8 @@ class Level {
                       + ";color:" + frame.fg
                       + ";background:" + frame.bg
                       + ";border-spacing: 0px"
-                      + ";font-size: " + this.height / d + "vh;";
+                      + ";line-height: " + lineHeight + "px"
+                      + ";font-size: " + lineHeight + "px;";
                 table += "<td style=\"" + style + "\">" + frame.character + "</td>";
             }
 
