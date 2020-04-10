@@ -6,13 +6,24 @@
   </head>
   <body style="margin: 0;">
     <div style="display: flex;">
-      <div style="float: left; margin-right: 7px">
-        <table id="game" style="border-collapse: collapse; overflow: scroll;"></table>
+      <div style="float: left;">
+        <table id="game" style="height: 100vh;
+                                box-sizing: border-box;
+                                border: 2px solid gray;
+                                border-right: none;
+                                padding: 7px;
+                                border-collapse: collapse;
+                                overflow: scroll;">
+        </table>
       </div>
       <div id="messages" style="height: 100vh;
+                                box-sizing: border-box;
+                                background: black;
+                                border: 2px solid gray;
+                                padding: 7px;
                                 flex-grow: 1;
                                 font-family: monospace;
-                                font-size: 3vh;
+                                font-size: 14;
                                 vertical-align: top;
                                 overflow-y: scroll;">
       </div>

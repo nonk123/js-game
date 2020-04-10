@@ -37,7 +37,7 @@ function message(text) {
     messagesElement.scrollTop = messagesElement.scrollHeight;
 }
 
-message('<span style="color:purple">Welcome!</span>')
+message('<span style="color:cyan">Welcome!</span>')
 
 // Level is hoisted for quite a while, so the variable has to be declared here.
 let level;
@@ -508,9 +508,9 @@ class Level {
 
         this._entities = [];
 
-        message('<span style="color:purple">Generating level...</span>')
+        message('<span style="color:cyan">Generating level...</span>')
         this.generate();
-        message('<span style="color:purple">Done. Have fun!</span>')
+        message('<span style="color:cyan">Done. Have fun!</span>')
     }
 
     get width() {
@@ -739,4 +739,5 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
+level.render();
 setInterval(function() { level.render() }, 1000 / fps);
