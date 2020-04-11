@@ -395,9 +395,8 @@ class Camera extends Movable {
         return dx*dx + dy*dy <= this.radius * this.radius;
     }
 
-    canSee(tileX, tileY) {
-        const dx = tileX - this.anchorX;
-        const dy = tileY - this.anchorY;
+    cast(dx, dy) {
+        const visible = [];
 
         const step = Math.abs(dx) >= Math.abs(dy) ? Math.abs(dx) : Math.abs(dy);
 
@@ -407,8 +406,10 @@ class Camera extends Movable {
         let dist = 0;
 
         while (dist < step) {
+            visible.push(this.level.roundCoordinates(x, y));
+
             if (this.level.get(x, y).opaque) {
-                return false;
+                break;
             }
 
             x += dx / step;
@@ -417,7 +418,21 @@ class Camera extends Movable {
             dist++;
         }
 
-        return true;
+        return visible;
+    }
+
+    getVisible() {
+        const visible = [];
+        const dr = 0.06;
+
+        for (let rad = 0; rad < Math.PI * 2; rad += dr) {
+            const dx = Math.cos(rad) * this.radius;
+            const dy = Math.sin(rad) * this.radius;
+
+            visible.push(...this.cast(dx, dy))
+        }
+
+        return visible;
     }
 
     draw(dx, dy, frame) {
@@ -442,13 +457,23 @@ class Camera extends Movable {
     crop() {
         this.display = [];
 
-        for (let dy = -this.radius; dy <= this.radius; dy++) {
-            for (let dx = -this.radius; dx <= this.radius; dx++) {
+        const visible = this.getVisible();
+
+        function isVisible(x, y) {
+            for (const pair of visible) {
+                if (pair[0] == x && pair[1] == y) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        for (let dx = -this.radius; dx <= this.radius; dx++) {
+            for (let dy = -this.radius; dy <= this.radius; dy++) {
                 const [x, y] = this.toWorld(dx, dy);
 
-                if (this.level.isInBounds(x, y)
-                    && this.isInside(dx, dy)
-                    && this.canSee(x, y)) {
+                if (isVisible(x, y)) {
                     this.draw(dx, dy, this.level.get(x, y).animation.nextFrame());
                 } else {
                     this.draw(dx, dy, new Frame());
@@ -459,7 +484,7 @@ class Camera extends Movable {
         for (const entity of this.level.entities) {
             const [dx, dy] = this.toCamera(entity.x, entity.y);
 
-            if (this.isInside(dx, dy)) {
+            if (isVisible(entity.x, entity.y)) {
                 this.draw(dx, dy, entity.animation.nextFrame());
             }
         }
