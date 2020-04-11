@@ -538,11 +538,9 @@ class Level {
     }
 
     generate() {
-        const wallFrequency = 0.325;
-
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                if (this.isOnBorder(x, y) || Math.random() <= wallFrequency) {
+                if (this.isOnBorder(x, y)) {
                     this.insert(new Wall(), x, y);
                 } else {
                     this.insert(new Floor(), x, y);
@@ -598,10 +596,12 @@ class Level {
         this.map[y][x] = tile;
     }
 
+    roundCoordinates(x, y) {
+        return [Math.round(x), Math.round(y)];
+    }
+
     get(x, y) {
-        // Just in case x and y aren't integers, e.g. interpolated.
-        x = Math.round(x);
-        y = Math.round(y);
+        [x, y] = this.roundCoordinates(x, y);
 
         // map[y][x] will throw an exception if map[y] is undefined.
         return this.map[y] ? this.map[y][x] : undefined;
@@ -660,6 +660,18 @@ class CaveLevel extends Level {
     generate() {
         super.generate();
 
+        const wallFrequency = 0.325;
+
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (Math.random() <= wallFrequency) {
+                    this.insert(new Wall(), x, y);
+                } else {
+                    this.insert(new Floor(), x, y);
+                }
+            }
+        }
+
         const iterations = 4;
 
         for (let i = 0; i < iterations; i++) {
@@ -691,7 +703,7 @@ class GameState {
     }
 }
 
-level = new CaveLevel(80, 80);
+level = new Level(80, 80);
 level.add(new Player("Gray"));
 
 let state = new GameState();
