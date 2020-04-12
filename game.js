@@ -318,24 +318,24 @@ class Corpse extends Entity {
         super(getDeadAnimation(entity));
 
         // The entity still exists between the worlds, I guess.
-        this.owner = entity;
+        this._owner = entity;
     }
 
     onRevive() {
-        this.level.add(this.owner);
+        this.level.add(this._owner);
         this.level.remove(this);
 
-        this.owner.x = this.x;
-        this.owner.y = this.y;
-        this.owner.hp = this.hp;
+        this._owner.x = this.x;
+        this._owner.y = this.y;
+        this._owner.hp = this.hp;
 
-        this.owner.onRevive();
+        this._owner.onRevive();
     }
 
     onAdd() {
-        this.x = this.owner.x;
-        this.y = this.owner.y;
-        this.hp = this.owner.hp;
+        this.x = this._owner.x;
+        this.y = this._owner.y;
+        this.hp = this._owner.hp;
     }
 
     move(dx, dy) {
@@ -439,11 +439,11 @@ class Camera extends Movable {
         dx += this.radius;
         dy += this.radius;
 
-        if (!this.display[dy]) {
-            this.display[dy] = [];
+        if (!this._display[dy]) {
+            this._display[dy] = [];
         }
 
-        this.display[dy][dx] = frame;
+        this._display[dy][dx] = frame;
     }
 
     toWorld(dx, dy) {
@@ -455,7 +455,7 @@ class Camera extends Movable {
     }
 
     crop() {
-        this.display = [];
+        this._display = [];
 
         const visible = this.getVisible();
 
@@ -489,7 +489,7 @@ class Camera extends Movable {
             }
         }
 
-        return this.display;
+        return this._display;
     }
 }
 
@@ -601,7 +601,6 @@ class Level {
     }
 
     add(entity) {
-        entity._level = this;
         this.entities.push(entity);
         entity.onAdd();
         this.get(entity.x, entity.y).onStep(entity);
