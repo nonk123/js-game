@@ -38,9 +38,9 @@ class Frame {
     // `character' defaults to no-break space because regular space breaks
     // everything.
     constructor(character="&#160", fg=defaultFg, bg=defaultBg) {
-        this._character = character;
-        this._fg = fg;
-        this._bg = bg;
+        this.character = character;
+        this.fg = fg;
+        this.bg = bg;
     }
 
     get character() {
@@ -97,11 +97,11 @@ class Tile {
     // `animation' - either an Animation, a Frame, or a character.
     constructor(animation) {
         if (animation instanceof Animation) {
-            this._animation = animation;
+            this.animation = animation;
         } else if (animation instanceof Frame) {
-            this._animation = new Animation(animation);
+            this.animation = new Animation(animation);
         } else {
-            this._animation = new Animation(new Frame(animation));
+            this.animation = new Animation(new Frame(animation));
         }
     }
 
@@ -166,8 +166,8 @@ class Movable extends Tile {
     constructor(animation) {
         super(animation)
 
-        this._x = 0;
-        this._y = 0;
+        this.x = -1;
+        this.y = -1;
     }
 
     // True if this Movable can phase through walls.
@@ -278,7 +278,7 @@ class Entity extends Movable {
     constructor(animation) {
         super(animation);
 
-        this._hp = 100;
+        this.hp = 100;
     }
 
     get hp() {
@@ -374,7 +374,7 @@ class Camera extends Movable {
         super(new Frame());
 
         this.anchorOn(level.player);
-        this._radius = 10;
+        this.radius = 10;
     }
 
     get phasing() {
@@ -534,7 +534,7 @@ class Player extends Entity {
     constructor(color) {
         super(new Frame("@", color));
 
-        this._kills = 0;
+        this.kills = 0;
     }
 
     get drawOrder() {
