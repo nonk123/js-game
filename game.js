@@ -180,6 +180,16 @@ class Movable extends Tile {
         return false;
     }
 
+    // True if this Movable can't be attacked.
+    get invincible() {
+        return false;
+    }
+
+    // Movables with higher `drawOrder' are rendered on the top layer.
+    get drawOrder() {
+        return 0;
+    }
+
     get level() {
         return level;
     }
@@ -241,6 +251,15 @@ class Movable extends Tile {
             || (!this.collide(this.x + dx, this.y + dy)
                 && (!this.collide(this.x + dx, this.y)
                     || !this.collide(this.x, this.y + dy)))) {
+            const canAttack = this.level.entitiesAt(this.x + dx, this.y + dy);
+
+            for (const enemy of canAttack) {
+                if (!enemy.invincible) {
+                    enemy.damage(10);
+                    return true;
+                }
+            }
+
             this.x += dx;
             this.y += dy;
 
@@ -290,7 +309,6 @@ class Entity extends Movable {
     }
 
     onDeath() {
-        message('<span style="color:red">You are dead!</span>');
         return this.level.add(new Corpse(this));
     }
 
@@ -319,6 +337,14 @@ class Corpse extends Entity {
 
         // The entity still exists between the worlds, I guess.
         this._owner = entity;
+    }
+
+    get invincible() {
+        return true;
+    }
+
+    get drawOrder() {
+        return -5;
     }
 
     onRevive() {
@@ -481,7 +507,18 @@ class Camera extends Movable {
             }
         }
 
-        for (const entity of this.level.entities) {
+        const compareFn = function(a, b) {
+            // TODO: better comparison function?
+            if (a.drawOrder < b.drawOrder) {
+                return -1;
+            } else if (a.drawOrder == b.drawOrder) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+
+        for (const entity of this.level.entities.sort(compareFn)) {
             const [dx, dy] = this.toCamera(entity.x, entity.y);
 
             if (isVisible(entity.x, entity.y)) {
@@ -496,9 +533,24 @@ class Camera extends Movable {
 class Player extends Entity {
     constructor(color) {
         super(new Frame("@", color));
+
+        this._kills = 0;
+    }
+
+    get drawOrder() {
+        return 5;
+    }
+
+    get kills() {
+        return this._kills;
+    }
+
+    set kills(kills) {
+        this._kills = kills;
     }
 
     onDeath() {
+        message('<span style="color:red">You are dead!</span>');
         // Set the level's player to their own corpse.
         return this.level.player = super.onDeath();
     }
@@ -520,6 +572,34 @@ class Player extends Entity {
     }
 }
 
+class Enemy extends Entity {
+    constructor(color) {
+        super(new Frame("g", color));
+
+        this.hp = 15;
+    }
+
+    onAdd() {
+        [this.x, this.y] = this.randomSpot();
+    }
+
+    onDeath() {
+        this.level.player.kills++;
+
+        if (this.level.player.kills == 1) {
+            message('<span style="color:red">First blood! Die, stupid goblin!</span>');
+        } else {
+            message('<span style="color:red">A goblin was slain! Kill \'em all!</span>');
+        }
+
+        if (this.level.player.kills == this.level.entities.length - 1) {
+            message('<span style="color:green">Victory!</span>');
+        }
+
+        return super.onDeath();
+    }
+}
+
 class Level {
     constructor(width, height) {
         this._width = width;
@@ -528,10 +608,6 @@ class Level {
         this._map = [];
 
         this._entities = [];
-
-        message('<span style="color:cyan">Generating level...</span>')
-        this.generate();
-        message('<span style="color:cyan">Done. Have fun!</span>')
     }
 
     get width() {
@@ -571,6 +647,12 @@ class Level {
                     this.insert(new Floor(), x, y);
                 }
             }
+        }
+    }
+
+    placeEnemies() {
+        for (let i = 0; i < rand(5, 20); i++) {
+            this.add(new Enemy("DarkGreen"));
         }
     }
 
@@ -629,6 +711,20 @@ class Level {
 
         // map[y][x] will throw an exception if map[y] is undefined.
         return this.map[y] ? this.map[y][x] : undefined;
+    }
+
+    entitiesAt(x, y) {
+        [x, y] = this.roundCoordinates(x, y);
+
+        const entities = [];
+
+        for (const entity of this.entities) {
+            if (entity.x == x && entity.y == y) {
+                entities.push(entity);
+            }
+        }
+
+        return entities;
     }
 
     isInBounds(x, y) {
@@ -727,7 +823,14 @@ class GameState {
     }
 }
 
-level = new Level(80, 80);
+level = new Level(15, 15);
+
+message('<span style="color:cyan">Generating level...</span>')
+level.generate();
+message('<span style="color:cyan">Placing enemies...</span>')
+level.placeEnemies();
+message('<span style="color:cyan">Done. Have fun!</span>')
+
 level.add(new Player("Gray"));
 
 let state = new GameState();
