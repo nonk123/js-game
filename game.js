@@ -35,6 +35,37 @@ message('<span style="color:cyan">Welcome!</span>')
 let level;
 let state;
 
+class Die {
+    // n - dice count.
+    // d - die sides.
+    // p - value to add to the result.
+    constructor(n=1, d=6, p=0) {
+        this._n = n;
+        this._d = d;
+        this._p = p;
+    }
+
+    get n() {
+        return this._n;
+    }
+
+    get d() {
+        return this._d;
+    }
+
+    get p() {
+        return this._p;
+    }
+
+    get last() {
+        return this._last;
+    }
+
+    roll() {
+        return this._last = Math.max(0, this.n * rand(1, this.d) + this.p);
+    }
+}
+
 class Frame {
     // `character' defaults to no-break space because regular space breaks
     // everything.
@@ -276,6 +307,7 @@ class Entity extends Movable {
         super(animation);
 
         this.hp = 100;
+        this.attackDie = new Die(1, 4);
     }
 
     get hp() {
@@ -284,6 +316,14 @@ class Entity extends Movable {
 
     set hp(hp) {
         this._hp = hp;
+    }
+
+    get attackDie() {
+        return this._attackDie;
+    }
+
+    set attackDie(attackDie) {
+        this._attackDie = attackDie;
     }
 
     damage(dmg) {
@@ -316,7 +356,7 @@ class Entity extends Movable {
 
         for (const enemy of enemies) {
             if (!enemy.invincible) {
-                enemy.damage(10);
+                enemy.damage(this.attackDie.roll());
                 return true;
             }
         }
@@ -577,6 +617,9 @@ class Player extends Entity {
         super(new Frame("@", color));
 
         this.kills = 0;
+
+        // I AM BECOME GOD.
+        this.attackDie = new Die(3, 12, +6);
     }
 
     get drawOrder() {
@@ -618,7 +661,7 @@ class Enemy extends Entity {
     constructor(color) {
         super(new Frame("g", color));
 
-        this.hp = 10;
+        this.hp = 20;
     }
 
     onAdd() {
@@ -628,14 +671,10 @@ class Enemy extends Entity {
     onDeath() {
         this.level.player.kills++;
 
-        if (this.level.player.kills == 1) {
-            message('<span style="color:red">First blood! Die, stupid goblin!</span>');
-        } else {
-            message('<span style="color:red">A goblin was slain! Kill \'em all!</span>');
-        }
+        message('<span style="color:red">DIE</span>');
 
         if (this.level.player.kills == this.level.entities.length - 1) {
-            message('<span style="color:green">Victory!</span>');
+            message('<span style="color:red">MISSION ACCOMPLISHED</span>');
         }
 
         return super.onDeath();
