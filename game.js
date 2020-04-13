@@ -761,8 +761,11 @@ class Level {
         const hpInfo = tile instanceof Entity ? `<span>HP: ${tile.hp}</span>` : "";
 
         return `\
+<div>
 <h2><span ${this.getStyle(frame)}}>${frame.character}</span></h2>
-${hpInfo}
+${hpInfo}<br>
+<div style="position: absolute; bottom: 7px;">? for help</div>
+</div>
 `;
     }
 
@@ -1006,6 +1009,48 @@ bind(new Binding("Escape", function() {
     return false;
 }));
 
+function key(s) {
+    return `
+<div class="menu" style="padding: 2px; display: inline-block; margin-bottom: 7px;">
+${s}
+</div>
+`;
+}
+
+helpWindows = {
+    "Movement": function() {
+        return `
+${key(7)} ${key(8)} ${key(9)}<br>
+${key(4)} ${key(5)} ${key(6)}<br>
+${key(1)} ${key(2)} ${key(3)}
+`;
+    },
+    "Look": function() {
+        return `
+${key("l")} - look around<br>
+${key("esc")} - return to game<br>
+${key("movement keys")} - move cursor
+`;
+    },
+    "Misc.": function() {
+        return `
+${key("?")} - show this message
+`;
+    }
+}
+
+function showHelp() {
+    infoElement.innerHTML = "";
+
+    for (const title in helpWindows) {
+        infoElement.innerHTML += `
+<div class="help">
+<h3>${title}</h3>
+${helpWindows[title]()}
+</div>
+`
+    }
+}
 
 document.addEventListener('keydown', function(event) {
     const key = event.key;
@@ -1014,12 +1059,18 @@ document.addEventListener('keydown', function(event) {
         if (binding.key == key) {
             if (binding.action()) {
                 level.update();
-                break;
             }
+
+            level.render();
+
+            break;
         }
     }
 
-    level.render();
+    if (key == "?") {
+        level.render();
+        showHelp();
+    }
 });
 
 level.render();
