@@ -1,5 +1,6 @@
 const mapElement = document.getElementById("game");
 const messagesElement = document.getElementById("messages");
+const infoElement = document.getElementById("info");
 
 const fps = 10;
 
@@ -31,8 +32,8 @@ function message(text) {
 
 message('<span style="color:cyan">Welcome!</span>')
 
-// Level is hoisted for quite a while, so the variable has to be declared here.
 let level;
+let state;
 
 class Frame {
     // `character' defaults to no-break space because regular space breaks
@@ -437,13 +438,6 @@ class Camera extends Movable {
         this.anchorY = this.y = movable.y;
     }
 
-    isInside(dx, dy) {
-        dx += this.x - this.anchorX;
-        dy += this.y - this.anchorY;
-
-        return dx*dx + dy*dy <= this.radius * this.radius;
-    }
-
     cast(dx, dy) {
         const visible = [];
 
@@ -472,7 +466,7 @@ class Camera extends Movable {
 
     getVisible() {
         const visible = [];
-        const dr = 0.06;
+        const dr = 0.05;
 
         for (let rad = 0; rad < Math.PI * 2; rad += dr) {
             const dx = Math.cos(rad) * this.radius;
@@ -503,26 +497,35 @@ class Camera extends Movable {
         return [x - this.x, y - this.y];
     }
 
-    crop() {
-        this._display = [];
+    isVisible(x, y) {
+        if (!this._visible.length) {
+            this._visible = this.getVisible();
+        }
 
-        const visible = this.getVisible();
-
-        function isVisible(x, y) {
-            for (const pair of visible) {
-                if (pair[0] == x && pair[1] == y) {
-                    return true;
-                }
-            }
-
+        // Outside the rectangle view.
+        if (Math.abs(x - this.x) > this.radius
+           || Math.abs(y - this.y) > this.radius) {
             return false;
         }
+
+        for (const pair of this._visible) {
+            if (pair[0] == x && pair[1] == y) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    crop() {
+        this._display = [];
+        this._visible = [];
 
         for (let dx = -this.radius; dx <= this.radius; dx++) {
             for (let dy = -this.radius; dy <= this.radius; dy++) {
                 const [x, y] = this.toWorld(dx, dy);
 
-                if (isVisible(x, y)) {
+                if (this.isVisible(x, y)) {
                     this.draw(dx, dy, this.level.get(x, y).animation.nextFrame());
                 } else {
                     this.draw(dx, dy, new Frame());
@@ -531,25 +534,41 @@ class Camera extends Movable {
         }
 
         const compareFn = function(a, b) {
-            // TODO: better comparison function?
-            if (a.drawOrder < b.drawOrder) {
-                return -1;
-            } else if (a.drawOrder == b.drawOrder) {
-                return 0;
-            } else {
-                return 1;
-            }
+            return (a.drawOrder > b.drawOrder) - (a.drawOrder < b.drawOrder);
         }
 
         for (const entity of this.level.entities.sort(compareFn)) {
             const [dx, dy] = this.toCamera(entity.x, entity.y);
 
-            if (isVisible(entity.x, entity.y)) {
+            if (this.isVisible(entity.x, entity.y)) {
                 this.draw(dx, dy, entity.animation.nextFrame());
             }
         }
 
+        if (state.freelook) {
+            this.draw(0, 0, new Frame("X", "yellow"))
+
+            const entities = this.level.entitiesAt(this.x, this.y);
+
+            if (entities.length) {
+                const entity = entities[0];
+
+                if (this.isVisible(entity.x, entity.y)) {
+                    state.lookingAt = entity;
+                }
+            } else {
+                state.lookingAt = this.level.get(this.x, this.y);
+            }
+        } else {
+            state.lookingAt = this.level.player;
+        }
+
         return this._display;
+    }
+
+    canMove(direction) {
+        const [dx, dy] = this.getDelta(direction);
+        return super.canMove(direction) && this.isVisible(this.x + dx, this.y + dy);
     }
 }
 
@@ -599,7 +618,7 @@ class Enemy extends Entity {
     constructor(color) {
         super(new Frame("g", color));
 
-        this.hp = 15;
+        this.hp = 10;
     }
 
     onAdd() {
@@ -674,9 +693,27 @@ class Level {
     }
 
     placeEnemies() {
-        for (let i = 0; i < rand(5, 20); i++) {
+        for (let i = 0; i < rand(15, 40); i++) {
             this.add(new Enemy("DarkGreen"));
         }
+    }
+
+    getStyle(frame) {
+        return `style="color: ${frame.fg}; background: ${frame.bg};""`
+    }
+
+    info(tile) {
+        if (!tile) {
+            return "";
+        }
+
+        const frame = tile.animation.currentFrame;
+        const hpInfo = tile instanceof Entity ? `<span>HP: ${tile.hp}</span>` : "";
+
+        return `\
+<h2><span ${this.getStyle(frame)}}>${frame.character}</span></h2>
+${hpInfo}
+`;
     }
 
     render() {
@@ -686,14 +723,14 @@ class Level {
             table += "<tr>";
 
             for (const frame of row) {
-                const style = `color: ${frame.fg}; background: ${frame.bg};`
-                table += `<td class="tile" style="${style}">${frame.character}</td>`;
+                table += `<td class="tile" ${this.getStyle(frame)}>${frame.character}</td>`;
             }
 
             table += "</tr>";
         }
 
         mapElement.innerHTML = table;
+        infoElement.innerHTML = this.info(state.lookingAt);
     }
 
     add(entity) {
@@ -817,6 +854,7 @@ class CaveLevel extends Level {
 class GameState {
     constructor() {
         this.moving = this.level.player;
+        this.lookingAt = this.level.player;
     }
 
     get moving() {
@@ -825,6 +863,19 @@ class GameState {
 
     set moving(moving) {
         this._moving = moving;
+        level.camera.anchorOn(moving);
+    }
+
+    get lookingAt() {
+        return this._lookingAt;
+    }
+
+    set lookingAt(lookingAt) {
+        this._lookingAt = lookingAt;
+    }
+
+    get freelook() {
+        return this.moving instanceof Camera;
     }
 
     get level() {
@@ -837,7 +888,7 @@ class GameState {
     }
 }
 
-level = new Level(15, 15);
+level = new Level(40, 40);
 
 message('<span style="color:cyan">Generating level...</span>')
 level.generate();
@@ -847,7 +898,7 @@ message('<span style="color:cyan">Done. Have fun!</span>')
 
 level.add(new Player("Gray"));
 
-let state = new GameState();
+state = new GameState();
 
 document.addEventListener('keydown', function(event) {
     const movement = {
@@ -874,7 +925,6 @@ document.addEventListener('keydown', function(event) {
         message('<span style="color:gray">Looking around</span>')
     } else if (key == "Escape") {
         state.moving = level.player;
-        level.camera.anchorOn(level.player);
         message('<span style="color:gray">Back to the game</span>')
     }
 
