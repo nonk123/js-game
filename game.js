@@ -950,40 +950,73 @@ level.add(new Player("Gray"));
 
 state = new GameState();
 
-document.addEventListener('keydown', function(event) {
-    const movement = {
-        "1": "sw",
-        "2": "s",
-        "3": "se",
-        "4": "w",
-        "6": "e",
-        "7": "nw",
-        "8": "n",
-        "9": "ne",
-        "ArrowLeft":  "w",
-        "ArrowRight": "e",
-        "ArrowUp":    "n",
-        "ArrowDown":  "s"
-    };
+const bindings = [];
 
+class Binding {
+    constructor(key, action) {
+        this._key = key;
+        this._action = action;
+    }
+
+    get key() {
+        return this._key;
+    }
+
+    get action() {
+        return this._action;
+    }
+}
+
+function bind(binding) {
+    bindings.push(binding);
+}
+
+const movement = {
+    "1": "sw",
+    "2": "s",
+    "3": "se",
+    "4": "w",
+    "6": "e",
+    "7": "nw",
+    "8": "n",
+    "9": "ne",
+    "ArrowLeft":  "w",
+    "ArrowRight": "e",
+    "ArrowUp":    "n",
+    "ArrowDown":  "s"
+};
+
+for (const key in movement) {
+    bind(new Binding(key, function() {
+        return state.move(movement[key]);
+    }));
+}
+
+bind(new Binding("5", function() { return true; }));
+
+bind(new Binding("l", function() {
+    state.moving = level.camera;
+    message('<span style="color:gray">Looking around</span>')
+    return false;
+}))
+
+bind(new Binding("Escape", function() {
+    state.moving = level.player;
+    message('<span style="color:gray">Back to the game</span>')
+    return false;
+}));
+
+
+document.addEventListener('keydown', function(event) {
     const key = event.key;
 
-    let moved = false;
-
-    if (key == "l") {
-        state.moving = level.camera;
-        message('<span style="color:gray">Looking around</span>')
-    } else if (key == "Escape") {
-        state.moving = level.player;
-        message('<span style="color:gray">Back to the game</span>')
-    }
-
-    if (key in movement) {
-        moved = state.move(movement[key]);
-    }
-
-    if (key == "5" || moved) {
-        level.update();
+    for (const binding of bindings) {
+        if (binding.key == key) {
+            if (binding.action()) {
+                level.update();
+                break;
+            }
+        }
     }
 
     level.render();
