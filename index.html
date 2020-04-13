@@ -3,31 +3,64 @@
   <head>
     <link rel="stylesheet" href="styles.css">
     <title>JS Game</title>
+    <style>
+      .ui, .menu, .game {
+          font-size: 12px;
+          background: black;
+      }
+
+      .menu {
+          border: 2px solid gray;
+          padding: 7px;
+          word-wrap: break-word;
+      }
+
+      .tile {
+          font-size: 3vh;
+      }
+
+      table {
+          border-collapse: collapse;
+          border-spacing: 0;
+      }
+
+      td {
+          padding: 0px;
+      }
+
+      #messages {
+          overflow-y: scroll;
+      }
+
+      div {
+          vertical-align: top;
+      }
+
+      * {
+          font-family: monospace;
+          box-sizing: border-box;
+      }
+    </style>
   </head>
-  <body style="margin: 0;">
-    <div style="display: flex;">
-      <div style="float: left;">
-        <table id="game" style="height: 100vh;
-                                box-sizing: border-box;
-                                border: 2px solid gray;
-                                border-right: none;
-                                padding: 7px;
-                                border-collapse: collapse;
-                                overflow: scroll;">
-        </table>
-      </div>
-      <div id="messages" style="height: 100vh;
-                                box-sizing: border-box;
-                                background: black;
-                                border: 2px solid gray;
-                                padding: 7px;
-                                flex-grow: 1;
-                                font-family: monospace;
-                                font-size: 14;
-                                vertical-align: top;
-                                overflow-y: scroll;">
-      </div>
-    </div>
+  <body style="margin: 0; padding: 0;">
+    <table id="layout" class="ui" style="height: 100vh;">
+      <tr>
+        <td rowspan="2" style="width: 50vw; margin: auto;">
+          <table id="game" class="ui" style="margin: 0 auto;"></table>
+        </td>
+        <td>
+          <div id="messages" class="menu" style="width: 50vw; height: 50vh;">
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div id="info" class="menu" style="width: 50vw; height: 50vh;">
+            <span style="color: gray;">TODO: put something here.</span>
+          </div>
+        </td>
+      </tr>
+    </table>
     <script src="game.js"></script>
   </body>
 </html>

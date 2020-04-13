@@ -653,23 +653,14 @@ class Level {
     }
 
     render() {
-        const fs = "3.15vh";
-
         let table = "";
 
-        for (const row of level.camera.crop()) {
+        for (const row of this.camera.crop()) {
             table += "<tr>";
 
             for (const frame of row) {
-                // Ugly, on-the-fly style generation.
-                const style
-                      = "font-family:monospace"
-                      + ";color:" + frame.fg
-                      + ";background:" + frame.bg
-                      + ";border-spacing: 0px"
-                      + ";line-spacing: " + fs
-                      + ";font-size: " + fs;
-                table += "<td style=\"" + style + "\">" + frame.character + "</td>";
+                const style = `color: ${frame.fg}; background: ${frame.bg};`
+                table += `<td class="tile" style="${style}">${frame.character}</td>`;
             }
 
             table += "</tr>";
@@ -867,7 +858,8 @@ document.addEventListener('keydown', function(event) {
     if (key == "5" || moved) {
         level.update();
     }
+
+    level.render();
 });
 
 level.render();
-setInterval(function() { level.render() }, 1000 / fps);
