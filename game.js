@@ -62,7 +62,13 @@ class Die {
     }
 
     roll() {
-        return this._last = Math.max(0, this.n * rand(1, this.d) + this.p);
+        let result = 0;
+
+        for (let i = 0; i < this.n; i++) {
+            result += rand(1, this.d);
+        }
+
+        return this._last = Math.max(0, result + this.p);
     }
 }
 
