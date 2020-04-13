@@ -175,7 +175,8 @@ class Movable extends Tile {
         return false;
     }
 
-    // True if this Movable doesn't trigger Tile::onStep() nor a level update.
+    // True if this Movable can't attack and doesn't trigger Tile::onStep() nor
+    // a level update.
     get dummy() {
         return false;
     }
@@ -234,28 +235,27 @@ class Movable extends Tile {
         }
     }
 
-    move(direction) {
-        // String directions like N, S, NW, SE are viable, too.
+    getDelta(direction) {
         if (typeof direction == "string") {
             direction = directions[direction];
         }
 
-        const dx = direction[0];
-        const dy = direction[1];
+        return direction;
+    }
 
-        if (this.phasing
+    canMove(direction) {
+        const [dx, dy] = this.getDelta(direction);
+
+        return this.phasing
             || (!this.collide(this.x + dx, this.y + dy)
                 && (!this.collide(this.x + dx, this.y)
-                    || !this.collide(this.x, this.y + dy)))) {
-            const canAttack = this.level.entitiesAt(this.x + dx, this.y + dy);
+                    || !this.collide(this.x, this.y + dy)));
+    }
 
-            for (const enemy of canAttack) {
-                if (!enemy.invincible) {
-                    enemy.damage(10);
-                    return true;
-                }
-            }
+    move(direction) {
+        const [dx, dy] = this.getDelta(direction);
 
+        if (this.canMove(direction)) {
             this.x += dx;
             this.y += dy;
 
@@ -301,6 +301,33 @@ class Entity extends Movable {
         // Hp before healing is negative or zero if you're dead, of course.
         if (this.hp - h <= 0 && this.hp > 0) {
             this.onRevive();
+        }
+    }
+
+    attack(direction) {
+        if (this.dummy) {
+            return false;
+        }
+
+        const [dx, dy] = this.getDelta(direction);
+
+        const enemies = this.level.entitiesAt(this.x + dx, this.y + dy);
+
+        for (const enemy of enemies) {
+            if (!enemy.invincible) {
+                enemy.damage(10);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    move(direction) {
+        if (!this.attack(direction)) {
+            return super.move(direction);
+        } else {
+            return true;
         }
     }
 
