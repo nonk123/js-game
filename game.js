@@ -194,10 +194,6 @@ class Movable extends Tile {
         return level;
     }
 
-    set level(_level) {
-        // Placeholder.
-    }
-
     get x() {
         return this._x;
     }
