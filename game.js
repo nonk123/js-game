@@ -409,6 +409,10 @@ class Corpse extends Entity {
         this._owner = entity;
     }
 
+    get dummy() {
+        return true;
+    }
+
     get invincible() {
         return true;
     }
@@ -436,6 +440,7 @@ class Corpse extends Entity {
 
     move(dx, dy) {
         // Corpses can't move by themselves, unless they're zombies.
+        return false;
     }
 }
 
@@ -928,8 +933,8 @@ class GameState {
     }
 
     move(direction) {
-        const ret = this.moving.move(direction);
-        return this.moving.dummy ? false : ret;
+        const moved = this.moving.move(direction);
+        return this.moving.dummy ? false : moved;
     }
 }
 
